@@ -1,0 +1,41 @@
+<html>
+    <head>
+        <script src="player.js"></script>
+        <style>
+.a {
+    background-color: #FFFFFF;
+}
+.b {
+    background-color: #F2F2F2;
+}
+.p {
+    background-color: #ADFCD2;
+}
+
+body {
+    background-color: #FAFBFF;
+}
+        </style>
+    </head>
+    <body>
+        <input type="button" onclick="toggle();" value="." id="toggle">&nbsp;&nbsp;&nbsp;<input type="button" onclick="setList(true, 0);" value="🔀">&nbsp;&nbsp;🔍&nbsp;<input id="search" type="text" onkeyup="setList(false, 0);">&nbsp;&nbsp;&nbsp;<span id="numres"></span>
+        &nbsp;&nbsp;🔊&nbsp;<input type="range" min=0 max=100 value=100 id="vol" onchange="audio.volume=(document.getElementById('vol').value/100)" style="width: 100px;">
+        &nbsp;&nbsp;🕑&nbsp;<input type="range" min=0 max=100 value=100 id="tim" style="width: 400px;" step="0.01">
+        <div id="status" style="border: 1px solid black; margin-bottom: 0.5em; margin-top: 0.5em;"></div>
+        <div id="list"></div>
+        <div id="help" style="display:none;"><ul>
+                <li>Click song name to play / add to queue</li>
+                <li>Click file name to remove from queue</li>
+                <li>? = 50 random tracks</li>
+                <li>Enter (in search box) adds first entry to queue</li>
+                <li>Insert (in search box) skips to next song in queue</li>
+                <li>First word gives sort priority to artist. Last word gives sort priority to title</li>
+                <li>H toggle this help text</li>
+                <li>J jump to search box</li>
+                <li><a href="/scan">/scan to control music scanning</a></li>
+                <li>Arrow left/right Jump in track</li>
+                <li>, / . Next/Prev page</li>
+        </ul></div>
+    </body>
+</html>
+
