@@ -1,5 +1,6 @@
 dStream.. DusteDs streamer
 ====
+![](https://github.com/DusteDdk/dstream/blob/master/screen.gif)
 - Simple access to your music collection from the web browser
 - Fast fuzzy search
 - For semi-organized music collections
