@@ -17,7 +17,7 @@ Infrastructure
 
 Running
 ====
-I assume you know how to use docker, remove the params you don't want.
+I assume you know how to use docker, edit parameters/ports/paths/IDs as needed.
 
 docker run --restart=always -d -v /your/music:/music:ro -v /permanent/database/:/db:rw -e USER_ID=9000 -e GROUP_ID=9000 dusted/dstream:latest
 
