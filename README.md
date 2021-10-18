@@ -19,7 +19,7 @@ Running
 ====
 I assume you know how to use docker, edit parameters/ports/paths/IDs as needed.
 
-docker run --restart=always -d -v /your/music:/music:ro -v /permanent/database/:/db:rw -e USER_ID=9000 -e GROUP_ID=9000 dusted/dstream:latest
+```docker run --restart=always -d -v /your/music:/music:ro -v /permanent/database/:/db:rw -e USER_ID=9000 -e GROUP_ID=9000 dusted/dstream:latest```
 
 The /db mount is optional, without it, the music database is lost if the container is removed.
 The USER_ID and GROUP_ID variables are optional, if not provided, the default of 1000 is used.
