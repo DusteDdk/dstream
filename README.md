@@ -62,3 +62,7 @@ maybe it won't fit you, but it fits me perfectly.
 Source?
 ====
 https://github.com/DusteDdk/dstream
+
+License
+====
+WTFPL
