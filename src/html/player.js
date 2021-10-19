@@ -66,12 +66,11 @@ async function setList(random, offset) {
         }
     }
 
-
     let html ='<table border=1 style="border: 1px solid black; border-collapse:collapse; width:100%">';
     pl.forEach( (track,idx)=>{
         const duration = `${(''+Math.floor(track.duration/60)).padStart(2,'0')}:${(''+Math.round(track.duration%60)).padStart(2,'0')}`;
-        const fn = track.file.replaceAll("'", "\\'");
-        html += '<tr class="'+getClass(idx)+'" id='+idx+'><td>'+track.codec.split(' ')[0]+'</td><td>'+track.albumName+'</td><td onclick="playFrom(\''+fn+'\','+idx+');">'+track.artistName+'</td><td onclick="add(\''+fn+'\');">'+((track.title!=='Untitled')?track.title:track.file )+'</td><td onclick="playNow(\''+fn+'\');">'+duration+'</td><td>'+track.year+'</td></tr>';
+        const fn = track.file.replaceAll("'", "\\'").replaceAll('#','%23');
+        html += '<tr class="'+getClass(idx)+'" id='+idx+'><td>'+track.codec.split(' ')[0]+'</td><td>'+track.albumName+'</td><td onclick="playFrom(\''+fn+'\','+idx+');" class="c">'+track.artistName+'</td><td onclick="add(\''+fn+'\');" class="c">'+((track.title!=='Untitled')?track.title:track.file )+'</td><td onclick="playNow(\''+fn+'\');" class="c">'+duration+'</td><td>'+track.year+'</td></tr>';
     });
 
     html+='</table>';
@@ -99,7 +98,7 @@ function playNext() {
         play(queue[0]);
     } else if(pl.length && cpl !==-1 && cpl < pl.length) {
         play(pl[cpl].file);
-        document.getElementById('status').innerHTML = 'Autoplay:<b onclick="stopAuto()">'+pl[cpl].file+'</b>&nbsp;&nbsp;&nbsp;<span id="playtime"></span>';
+        document.getElementById('status').innerHTML = 'Autoplay:<b onclick="stopAuto()" class="c">'+pl[cpl].file+'</b>&nbsp;&nbsp;&nbsp;<span id="playtime"></span>';
         cpl++;
     } else {
         cpl=-1;
@@ -118,7 +117,7 @@ function add(file) {
 }
 
 function setQueue() {
-    document.getElementById('status').innerHTML = queue.map( (e,i)=>(i===0?'<b>':'')+'<span onclick="remove('+i+')">'+e+'</span>'+(i===0?'</b>&nbsp;&nbsp;<span id="playtime"></span>':'')).join('<br>');
+    document.getElementById('status').innerHTML = queue.map( (e,i)=>(i===0?'<b>':'')+'<span class="c" onclick="remove('+i+')">'+e+'</span>'+(i===0?'</b>&nbsp;&nbsp;<span id="playtime"></span>':'')).join('<br>');
 
 }
 
