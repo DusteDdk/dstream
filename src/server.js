@@ -11,6 +11,10 @@ const sqlite3 = require('sqlite3');
 
 const db = new sqlite3.Database('/db/metadata.sqlite');
 
+const fs = require('fs');
+const path = require('path');
+
+
 db.serialize( ()=>{
     db.run('CREATE TABLE IF NOT EXISTS track (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT UNIQUE, artist INTEGER, album INTEGER, title TEXT, genre TEXT, lossless INTEGER, codec TEXT, bitrate INTEGER, duration REAL, track INTEGER, disk INTEGER, year INTEGER)');
     db.run('CREATE INDEX IF NOT EXISTS trackIdx ON track (file, title, year)');
@@ -20,6 +24,34 @@ db.serialize( ()=>{
     db.run('CREATE TABLE IF NOT EXISTS album (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, uniqname UNIQUE)');
     db.run('CREATE INDEX IF NOT EXISTS  alIdx ON album (name)');
     db.run('INSERT OR IGNORE INTO album (name) VALUES("-")');
+});
+
+
+// Some flac files in my collection cannot play because.. they have an id3 tag and firefox just can't see past that.
+app.get('/flac/music/*.flac', (req, res)=>{
+    const first = req.path.replace('/flac', '');
+    const filePath = path.resolve( decodeURIComponent(first));
+    console.log('handling flac file specially:',decodeURIComponent(req.path));
+
+    const stream = fs.createReadStream( filePath );
+
+    let gotHead=false;
+    stream.on('readable', ()=>{
+        let data;
+            while( (data = stream.read(1024*128) )) {
+                if(gotHead) {
+                    res.write(data);
+                } else {
+                    const headerPos = data.indexOf('fLaC');
+                    if(!headerPos === -1) {
+                        console.error('No fLaC found in',filePath);
+                    } else {
+                        gotHead=true;
+                        res.write( data.slice(headerPos) );
+                    }
+                }
+            }
+    });
 });
 
 app.use('/music/', express.static('/music'));

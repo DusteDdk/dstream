@@ -145,6 +145,10 @@ function playNow(file) {
 
 function play(file) {
     audio.pause();
+
+    if(document.getElementById('silly').checked && file.endsWith('.flac')) {
+        file = '/flac'+file;
+    }
     audio.src = file;
     audio.load();
     audio.play();

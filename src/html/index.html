@@ -23,7 +23,8 @@ body {
         </style>
     </head>
     <body>
-        <input type="button" onclick="toggle();" value="." id="toggle">&nbsp;&nbsp;&nbsp;<input type="button" onclick="setList(true, 0);" value="🔀">&nbsp;&nbsp;🔍&nbsp;<input id="search" type="text" onkeyup="setList(false, 0);">&nbsp;&nbsp;&nbsp;<span id="numres"></span>
+        <input type="button" onclick="toggle();" value="." id="toggle">&nbsp;&nbsp;&nbsp;<input type="button" onclick="setList(true, 0);" value="🔀">&nbsp;&nbsp;🔍&nbsp;<input id="search" type="text" onkeyup="setList(false, 0);">&nbsp;&nbsp;&nbsp;
+        &nbsp;&nbsp;&nbsp;<span id="numres"></span><input type="checkbox" id="silly" title="skip past id3 files for flacs..">
         &nbsp;&nbsp;🔊&nbsp;<input type="range" min=0 max=100 value=100 id="vol" onchange="audio.volume=(document.getElementById('vol').value/100)" style="width: 100px;">
         &nbsp;&nbsp;🕑&nbsp;<input type="range" min=0 max=100 value=100 id="tim" style="width: 400px;" step="0.01">
         <div id="status" style="border: 1px solid black; margin-bottom: 0.5em; margin-top: 0.5em;"></div>
