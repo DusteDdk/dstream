@@ -55,8 +55,6 @@ app.get('/flac/music/*.flac', (req, res)=>{
 });
 
 app.use('/music/', express.static('/music'));
-app.use('/', express.static('/src/html/'));
-
 
 app.use('/random.json', (req, res)=>{
     const data = [];
@@ -141,3 +139,8 @@ app.use('/scan', (req, res)=>{
 
 });
 
+app.use('/list', (req, res)=>{
+    res.sendFile('/db/list.htm');
+});
+
+app.use('/', express.static('/src/html/'));
