@@ -170,7 +170,7 @@ db.each( 'SELECT file FROM track', [],(err,row)=>{
 }, ()=>{
     console.log('Adding new files...');
     addFromArr(0, ()=>{
-    
+
         if(filesToRemove.length) {
             console.log('Removing old files...');
             db.run('DELETE FROM track WHERE file IN ('+filesToRemove.map(e=>'?').join(',')+')', filesToRemove, (err)=>{
@@ -186,10 +186,40 @@ db.each( 'SELECT file FROM track', [],(err,row)=>{
     });
 });
 
-function allDone() {
+
+async function allDone() {
     console.log(`New files: ${newFiles} Existing files: ${filesInDb} Delted files: ${staleFiles}`);
+    console.log('Generating /list ...');
+    await genList();
+    console.log('List done.');
     db.close();
-    console.log('Db closed, done.');
+    console.log('Db closed.');
+    console.log('Process exit.');
 }
 
+async function genList() {
+    return new Promise(resolve=>{
+    const db = new sqlite3.Database('/db/metadata.sqlite');
+
+        const writeStream = fs.createWriteStream('/db/list.htm', { flags : 'w', flush: true});
+        writeStream.write('<html><head><title>list</title><head><body><table width="100%" border=1><tr><td>codec</td><td>Album</td><td>Artist</td><td>Title</td><td>Year</td></tr>')
+        db.each('SELECT track.rowid, year, duration,codec, file, title, artist.name AS artistName, album.name AS albumName FROM track INNER JOIN artist ON artist.id=track.artist INNER JOIN album ON album.id=track.album ORDER BY track.rowid DESC', async (err,row)=>{
+            if(err) {
+                console.log(err);
+            }
+            await new Promise( wr=>{
+                const tt = `${row.title}<br>${row.id} : ${row.file.substr(7)}`;
+                const r = `<tr><td>${row.codec}</td><td>${row.albumName}</td><td>${row.artistName}</td><td>${tt}</td><td>${row.year}</td></tr>\n`;
+                writeStream.write(r, ()=>{
+                    wr();
+                });
+            });
+        },
+        ()=>{
+            writeStream.write('</table></body>');
+            db.close();
+            resolve();
+        });
+    });
+}
 
