@@ -184,11 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-async function toggleFullscreen(doc) {
-    isFullScreen = !isFullScreen;
+document.addEventListener("fullscreenchange", (event) => {
+    if(document.fullscreenElement) {
+        canvas.removeEventListener('click', togglePop);
 
-    if (isFullScreen) {
-        await canvas.requestFullscreen();
         setTimeout(() => {
             canvas.width = window.screen.width;
             canvas.height = window.screen.height;
@@ -196,13 +195,28 @@ async function toggleFullscreen(doc) {
             height = canvas.height;
             step = width / binCount;
         }, 100);
-
     } else {
-        doc.exitFullscreen();
-        height = 400;
-        canvas.height = 400;
-        width = canvas.width;
-        step = width / binCount;
+        setTimeout(() => {
+            canvas.addEventListener('click', togglePop);
+            height = 400;
+            canvas.height = 400;
+            width = canvas.width;
+            step = width / binCount;
+            onMainResize();
+        }, 100);
+    }
+
+});
+
+async function toggleFullscreen() {
+    if(win) {
+        return;
+    }
+
+    if (!document.fullscreenElement) {
+        await canvas.requestFullscreen();
+    } else {
+        document.exitFullscreen();
     }
 
 }
@@ -286,7 +300,7 @@ document.addEventListener("keydown", async (event) => {
                 return;
             }
 
-            await toggleFullscreen(document);
+            await toggleFullscreen();
 
 
             event.stopPropagation();
@@ -331,8 +345,35 @@ let updateTime = setInterval(() => {
 
 
 
+let showVisWidth=false;
 let visIsInit = false;
+const WidthAsLogTen = (width, idx, binCount) => width * ( Math.log10(1+1/(idx+1) / Math.log10(binCount) ));
+const WidthAsLinear = (width, idx, binCount) => width/binCount;
+const WidthAsOne = ()=> 1;
 
+let besf=1;
+let lastdir=0;
+const WidthAsBestEffort = (width, idx, binCount, lastWidth) => {
+
+    if(idx===0) {
+        if(lastWidth > canvas.width) {
+            if( lastdir !== 1) {
+                besf -= 0.05;
+                lastdir = -1;
+            }
+        }
+        if(lastWidth < canvas.width) {
+            if( lastdir !== -1) {
+                besf += 0.05;
+                lastdir = 1;
+            }
+
+        }
+    }
+    return ((width/binCount)*( 1-Math.log(idx+1)/Math.log(binCount) ))*besf;
+};
+
+let widthFun = WidthAsBestEffort;
 let showVis;
 let togglePop;
 let ctx;
@@ -348,6 +389,8 @@ let freql;
 let freqr;
 let width;
 let step;
+let win = null;
+let lastWidth=1024;
 
 let bassHist;
 let avgbass;
@@ -359,6 +402,7 @@ let fallStyle;
 let toggleMono;
 let smooth;
 let monoNode = null;
+let onMainResize;
 
 async function toggleVis() {
     if (visIsInit) {
@@ -450,13 +494,20 @@ async function toggleVis() {
             width = canvas.width;
             height = canvas.height;
             step = width / binCount;
+            lastWidth=canvas.width;
+            lastdir=0;
+            besf=1;
         }
         t.fillStyle = `rgb(0,0,0)`;
         t.fillRect(0, 0, width, canvas.height);
     }
 
-    window.addEventListener('resize', () => onResize(window, document));
-    onResize(window, document);
+    onMainResize = () => {
+        onResize(window, document);
+    };
+
+    window.addEventListener('resize', onMainResize);
+    onMainResize();
 
 
     function srcToUrl(src) {
@@ -532,6 +583,7 @@ async function toggleVis() {
 
     }
 
+    lastWidth=canvas.width;
     draw = function () {
         leftAnalyser.getByteFrequencyData(freql);
         rightAnalyser.getByteFrequencyData(freqr);
@@ -553,21 +605,30 @@ async function toggleVis() {
             const r = freqr[i];
             const d = Math.abs(l - r);
 
+            const w = widthFun(canvas.width, i, binCount, lastWidth);
+
             if (fallStyle == 0) {
                 t.fillStyle = `rgb(${l},${r},${d})`;
-                t.fillRect(lx, wfHeight, step, cHeight);
+                t.fillRect(lx, wfHeight, w, cHeight);
 
                 t.fillStyle = `rgb(${r},${l},${d})`;
-                t.fillRect(lx, wfHeight + cHeight, step, cHeight);
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
             } else {
                 t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
-                t.fillRect(lx, wfHeight, step, cHeight);
+                t.fillRect(lx, wfHeight, w, cHeight);
 
                 t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
-                t.fillRect(lx, wfHeight + cHeight, step, cHeight);
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
             }
-            lx += step;
+            lx += w;
+        }
+        lastWidth=lx;
+        if(showVisWidth) {
+            t.fillStyle=`rgb(0,0,0)`;
+            t.fillRect(0, wfHeight+(cHeight/2), width, cHeight);
 
+            t.fillStyle=`rgba(255,255,255,0.8)`;
+            t.fillRect(0, wfHeight+(cHeight/2), lx, cHeight);
         }
 
         if (showVis) {
@@ -580,7 +641,7 @@ async function toggleVis() {
     // popout
 
     //const host   = document.getElementById('canvasHost');
-    let win = null;
+
     togglePop = () => {
 
         if (win) {
@@ -601,6 +662,8 @@ async function toggleVis() {
         win.document.close();
 
         canvas.removeEventListener('click', togglePop);
+        window.removeEventListener('resize', onMainResize);
+
 
         visWin = win;
 
@@ -613,6 +676,9 @@ async function toggleVis() {
             //host.replaceChild(canvas, placeholder);
             document.body.insertBefore(canvas, document.body.firstChild);
             canvas.addEventListener('click', togglePop);
+            window.addEventListener('resize', onMainResize);
+            setTimeout( onMainResize, 60);
+
             visWin = window;
             win = null;
         });
