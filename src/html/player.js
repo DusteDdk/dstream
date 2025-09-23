@@ -1,4 +1,11 @@
 
+let visWrap;
+setTimeout(() => {
+    visWrap = document.getElementById('visWrap');
+}, 1000);
+
+//
+
 let lastQuery = [];
 let curPage = 0;
 function loadList(query, random, offset) {
@@ -24,11 +31,60 @@ function getClass(idx) {
 }
 
 let pl;
+let keyNum = 0;
+let searchStr='';
+
+let numTracks=0;
+
 async function setList(random, offset) {
-    const list = await loadList(document.getElementById('search').value, random, offset);
+
+    if(isNaN(offset)) {
+        offset = 0;
+        random=true;
+    }
+
+    keyNum++;
+    const myKey = keyNum;
+
+    const canOptimize = (!random && offset === 0);
+    if(canOptimize) {
+        await new Promise( (resolve)=>{
+            setTimeout(resolve, 250);
+        });
+
+        if(keyNum != myKey) {
+            return;
+        }
+
+        if(isNaN (offset)) {
+            random=true;
+            offset=0;
+            curPage=0;
+        }
+
+    }
+
+    const mySearchStr = document.getElementById('search').value;
+
+    if(canOptimize && mySearchStr == searchStr) {
+        return;
+    }
+
+    searchStr = mySearchStr;
+    const list = await loadList(mySearchStr, random, offset);
+
+    if(canOptimize && searchStr != mySearchStr) {
+        return;
+    }
+
     pl = JSON.parse(list);
 
-    document.getElementById('numres').innerHTML = pl.length;
+    if( offset === 0) {
+        numTracks = pl.length;
+        document.getElementById('numres').innerHTML = pl.length;
+    } else {
+
+    }
 
 
     if (!random && lastQuery.length) {
@@ -66,11 +122,13 @@ async function setList(random, offset) {
         }
     }
 
-    let html = '<table border=1 style="border: 1px solid black; border-collapse:collapse; width:100%">';
+    let html = '<table border=1 style="border: 1px solid; border-collapse:collapse; width:100%">';
     pl.forEach((track, idx) => {
+        if(!track) { return console.error(`Track is null at idx ${idx} curPage ${curPage} in list of ${pl.length}`); }
         const duration = `${('' + Math.floor(track.duration / 60)).padStart(2, '0')}:${('' + Math.round(track.duration % 60)).padStart(2, '0')}`;
         const fn = track.file.replaceAll("'", "\\'").replaceAll('#', '%23');
-        html += '<tr class="' + getClass(idx) + '" id=' + idx + '><td>' + track.codec.split(' ')[0] + '</td><td>' + track.albumName + '</td><td onclick="playFrom(\'' + fn + '\',' + idx + ');" class="c">' + track.artistName + '</td><td onclick="add(\'' + fn + '\');" class="c">' + ((track.title !== 'Untitled') ? track.title : track.file) + '</td><td onclick="playNow(\'' + fn + '\');" class="c">' + duration + '</td><td>' + track.year + '</td></tr>';
+        const trackNum = (track.id)?track.id:idx+curPage;
+        html += '<tr class="' + getClass(idx) + '" id=' + idx + '><td>' + trackNum + ' ' +track.codec.split(' ')[0] +'</td><td>' + track.albumName + '</td><td onclick="playFrom(\'' + fn + '\',' + idx + ');" class="c">' + track.artistName + '</td><td onclick="add(\'' + fn + '\');" class="c">' + ((track.title !== 'Untitled') ? track.title : track.file) + '</td><td onclick="playNow(\'' + fn + '\');" class="c">' + duration + '</td><td>' + track.year + '</td></tr>';
     });
 
     html += '</table>';
@@ -185,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener("fullscreenchange", (event) => {
-    if(document.fullscreenElement) {
+    if (document.fullscreenElement) {
         canvas.removeEventListener('click', togglePop);
 
         setTimeout(() => {
@@ -197,7 +255,7 @@ document.addEventListener("fullscreenchange", (event) => {
         }, 100);
     } else {
         setTimeout(() => {
-            canvas.addEventListener('click', togglePop);
+            //canvas.addEventListener('click', togglePop);
             height = 400;
             canvas.height = 400;
             width = canvas.width;
@@ -209,7 +267,7 @@ document.addEventListener("fullscreenchange", (event) => {
 });
 
 async function toggleFullscreen() {
-    if(win) {
+    if (win) {
         return;
     }
 
@@ -238,22 +296,28 @@ document.addEventListener("keydown", async (event) => {
             document.getElementById('search').focus();
         }
 
+        if (event.code === 'Space') {
+            hit = true;
+            toggle();
+        }
+
         if (event.code === 'Comma') {
             hit = true;
             if (curPage === 0) {
                 curPage = pl[0].id - 1;
             } else {
-                curPage -= 10;
+                curPage -= 28;
             }
+
             setList(false, curPage);
         }
 
         if (event.code === 'Period') {
             hit = true;
             if (curPage === 0) {
-                curPage = pl[0].id - 1;
+                curPage = pl[0].id + 1;
             } else {
-                curPage += 10;
+                curPage += 28;
             }
             setList(false, curPage);
         }
@@ -345,36 +409,42 @@ let updateTime = setInterval(() => {
 
 
 
-let showVisWidth=false;
+let showVisWidth = false;
 let visIsInit = false;
-const WidthAsLogTen = (width, idx, binCount) => width * ( Math.log10(1+1/(idx+1) / Math.log10(binCount) ));
-const WidthAsLinear = (width, idx, binCount) => width/binCount;
-const WidthAsOne = ()=> 1;
 
-let besf=1;
-let lastdir=0;
+
+
+const WidthAsLogTen = (width, idx, binCount) => width * (Math.log10(1 + 1 / (idx + 1) / Math.log10(binCount)));
+const WidthAsLinear = (width, idx, binCount) => width / binCount;
+const WidthAsOne = () => 1;
 const WidthAsBestEffort = (width, idx, binCount, lastWidth) => {
 
-    if(idx===0) {
-        if(lastWidth > canvas.width) {
-            if( lastdir !== 1) {
+    if (idx === 0) {
+        if (lastWidth > canvas.width) {
+            if (lastdir !== 1) {
                 besf -= 0.05;
                 lastdir = -1;
             }
         }
-        if(lastWidth < canvas.width) {
-            if( lastdir !== -1) {
+        if (lastWidth < canvas.width) {
+            if (lastdir !== -1) {
                 besf += 0.05;
                 lastdir = 1;
             }
 
         }
     }
-    return ((width/binCount)*( 1-Math.log(idx+1)/Math.log(binCount) ))*besf;
+    return ((width / binCount) * (1 - Math.log(idx + 1) / Math.log(binCount))) * besf;
 };
-
-let widthFun = WidthAsBestEffort;
-let showVis;
+const WidthFunctions = {
+    WidthAsLogTen,
+    WidthAsLinear,
+    WidthAsOne,
+    WidthAsBestEffort,
+};
+let setFallSpeed;
+let setVisMono;
+let widthFun = WidthAsLinear;
 let togglePop;
 let ctx;
 let src;
@@ -390,8 +460,18 @@ let freqr;
 let width;
 let step;
 let win = null;
-let lastWidth=1024;
-
+let lastWidth = 1024;
+let DrawUnbalance;
+let DrawStereoDiff;
+let intensityScale = 0;
+let setIntensityAutoscale;
+let setIntensityScale;
+let maxAutoScale = 1.5;
+let enableAutoscale = true;
+let autoScaleWindow = 60;
+let DrawStereoNoDiffColor;
+let DrawStereo;
+let drawFunction;
 let bassHist;
 let avgbass;
 let isFullScreen;
@@ -403,67 +483,182 @@ let toggleMono;
 let smooth;
 let monoNode = null;
 let onMainResize;
+let showVis = false;
+
+let besf = 1;
+let lastdir = 0;
+
+
+let setVisWidth = (key) => {
+    widthFun = WidthFunctions[key];
+};
+
 
 async function toggleVis() {
     if (visIsInit) {
         showVis = !showVis;
 
+        document.getElementById('visWrap').style.display = (showVis) ? 'block' : 'none';
         if (showVis) {
             showVis = false;
-
             setTimeout(() => {
+                document.getElementById('visSettings').style.display = 'block';
                 canvas.style.display = 'block';
                 showVis = true;
-                draw();
+                drawFunction();
             }, 200);
         } else {
+            document.getElementById('visSettings').style.display = 'none';
+
             canvas.style.display = 'none';
         }
 
         return;
     }
+
     visIsInit = true;
     showVis = true;
 
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    src = ctx.createMediaElementSource(audio);
-
-    splitter = ctx.createChannelSplitter(2);
-    src.connect(splitter);
-
-    fftSize = 2048;
-
-    leftAnalyser = ctx.createAnalyser();
-    rightAnalyser = ctx.createAnalyser();
+    document.getElementById('visSettings').style.display = 'block';
+    document.getElementById('visWrap').style.display = (showVis) ? 'block' : 'none';
 
 
-    leftAnalyser.fftSize = fftSize;
-    rightAnalyser.fftSize = fftSize;
-    leftAnalyser.smoothingTimeConstant = 0;
-    rightAnalyser.smoothingTimeConstant = 0;
 
-    smooth = function (s) {
-        leftAnalyser.smoothingTimeConstant = s;
-        rightAnalyser.smoothingTimeConstant = s;
+
+    let externalSource = false;
+
+    toggleCapture = async () => {
+        if (ctx) {
+            await ctx.close();
+        }
+        externalSource = !externalSource;
+
+        document.getElementById("toggleCaptureBtn").value = externalSource ? "🔈" : "🎤";
+
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        if (externalSource) {
+            const base = {
+                echoCancellation: false,    // disable processing to avoid mono downmix
+                noiseSuppression: false,
+                autoGainControl: false
+            };
+            const supports = navigator.mediaDevices.getSupportedConstraints();
+            // Request stereo if supported (don’t fail if unavailable).
+            const stereo = supports.channelCount ? { channelCount: { ideal: 2 } } : {};
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: { ...base, ...stereo }
+            });
+            const inTrack = stream.getAudioTracks()[0];
+            console.log('Actual channels:', inTrack.getSettings().channelCount); // 1, 2, ...
+            // Hook into WebAudio
+            src = ctx.createMediaStreamSource(stream);
+
+        } else {
+            src = ctx.createMediaElementSource(audio);
+            src.connect(ctx.destination);
+        }
+
+        splitter = ctx.createChannelSplitter(2);
+        src.connect(splitter);
+
+        fftSize = 2048;
+
+        leftAnalyser = ctx.createAnalyser();
+        rightAnalyser = ctx.createAnalyser();
+
+
+        leftAnalyser.fftSize = fftSize;
+        rightAnalyser.fftSize = fftSize;
+        leftAnalyser.smoothingTimeConstant = 0;
+        rightAnalyser.smoothingTimeConstant = 0;
+
+        smooth = function (s) {
+            leftAnalyser.smoothingTimeConstant = s;
+            rightAnalyser.smoothingTimeConstant = s;
+        }
+
+        binCount = rightAnalyser.frequencyBinCount;
+
+        splitter.connect(leftAnalyser, 0);
+        splitter.connect(rightAnalyser, 1);
+
+
+        function srcToUrl(src) {
+            const srcString = `(${src.toString()})();`
+            const blob = new Blob([srcString], { type: 'application/javascript' });
+            return URL.createObjectURL(blob);
+        }
+
+        // lazy hack because I don't want more files, and I still want syntax highlighting..
+        const url = srcToUrl(() => {
+            let chan = 0;
+            class Monoize extends AudioWorkletProcessor {
+                static get parameterDescriptors() {
+                    return [];
+                }
+                process(inputs, outputs, parameters) {
+                    const input = inputs[0];
+                    const output = outputs[0];
+
+                    if (output.length == 2 && output[0].length == output[1].length) {
+                        const il = input[0] || new Float32Array(output[0].length);
+                        const ol = output[0];
+                        const ir = input[1] || new Float32Array(output[1].length);
+                        const or = output[1];
+
+                        for (let i = 0; i < or.length; i++) {
+                            const v = (il[i] + ir[i]) / 2;
+                            or[i] = v;
+                            ol[i] = v;
+                        }
+
+                    }
+
+                    return false;
+                }
+            }
+            registerProcessor('Monoize', Monoize);
+        });
+
+        await ctx.audioWorklet.addModule(url);
+        URL.revokeObjectURL(url); // optional cleanup after load
+
+
+        monoNode = new AudioWorkletNode(ctx, 'Monoize', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [2],
+            parameterData: {},
+            processorOptions: {}
+        });
+
+
     }
 
-    binCount = rightAnalyser.frequencyBinCount;
+    // hack, use toggle to init the audio chain..
+    // Default is NOT to capture external source, so we start by toggling from true to false, then applying that.
+    externalSource = true;
 
-    splitter.connect(leftAnalyser, 0);
-    splitter.connect(rightAnalyser, 1);
+    await toggleCapture();
 
 
-    src.connect(ctx.destination);
+
+
+
+
 
     canvas = document.createElement('canvas');
+    visWrap.style.boxShadow = '0 4px 8px 0px black';
     visWin = window;
-    document.body.insertBefore(canvas, document.body.firstChild);
+    visWrap.insertBefore(canvas, visWrap.firstChild)
 
 
 
     t = canvas.getContext('2d');
 
-    setTimeout(() => canvas.addEventListener('click', togglePop), 200);
+    //setTimeout(() => canvas.addEventListener('click', togglePop), 200);
 
     freql = new Uint8Array(binCount);
     freqr = new Uint8Array(binCount);
@@ -494,9 +689,9 @@ async function toggleVis() {
             width = canvas.width;
             height = canvas.height;
             step = width / binCount;
-            lastWidth=canvas.width;
-            lastdir=0;
-            besf=1;
+            lastWidth = canvas.width;
+            lastdir = 0;
+            besf = 1;
         }
         t.fillStyle = `rgb(0,0,0)`;
         t.fillRect(0, 0, width, canvas.height);
@@ -510,81 +705,102 @@ async function toggleVis() {
     onMainResize();
 
 
-    function srcToUrl(src) {
-        const srcString = `(${src.toString()})();`
-        const blob = new Blob([srcString], { type: 'application/javascript' });
-        return URL.createObjectURL(blob);
-    }
 
-    // lazy hack because I don't want more files, and I still want syntax highlighting..
-    const url = srcToUrl(() => {
-        class Monoize extends AudioWorkletProcessor {
-            static get parameterDescriptors() {
-                return [];
-            }
-            process(inputs, outputs, parameters) {
-                const input = inputs[0];
-                const output = outputs[0];
-                if (output.length == 2 && output[0].length == output[1].length) {
-                    const il = input[0] || new Float32Array(output[0].length);
-                    const ol = output[0];
-                    const ir = input[1] || new Float32Array(output[1].length);
-                    const or = output[1];
 
-                    for (let i = 0; i < or.length; i++) {
-                        const v = (il[i] + ir[i]) / 2;
-                        or[i] = v;
-                        ol[i] = v;
-                    }
-                }
-
-                return false;
-            }
+    document.getElementById('setIntensityAutoscaleCheckbox').checked = enableAutoscale;
+    setIntensityAutoscale = () => {
+        enableAutoscale = document.getElementById('setIntensityAutoscaleCheckbox').checked;
+        if (!enableAutoscale) {
+            document.getElementById('visIntScale').textContent = 'manual';
         }
-        registerProcessor('Monoize', Monoize);
-    });
+        setIntensityScale();
+    }
+    setIntensityScale = () => {
+        let scale = document.getElementById('intensityRangeInput').value;
+        intensityScale = 0.6 / 25 * scale;
+        maxAutoScale = 1.5 / 25 * scale;
+        document.getElementById('visIntScale').textContent = intensityScale;
+    };
 
-    await ctx.audioWorklet.addModule(url);
-    URL.revokeObjectURL(url); // optional cleanup after load
-
-
-    if (!monoNode) {
-        monoNode = new AudioWorkletNode(ctx, 'Monoize', {
-            numberOfInputs: 1,
-            numberOfOutputs: 1,
-            outputChannelCount: [2],
-            parameterData: {},
-            processorOptions: {}
-        });
+    setFallSpeed = (speedPct) => {
+        fallSpeed = 1 / 25 * speedPct;
+        document.getElementById('visFallSpeedDisp').textContent = `${fallSpeed} p/f`;
     }
 
     toggleMono = function () {
         isMono = !isMono;
-
-
+        src.disconnect();
 
         if (isMono) {
-            src.disconnect();
-            //            src.disconnect(ctx.destination);
-            //          src.disconnect(splitter);
             src.connect(monoNode);
-
             monoNode.connect(ctx.destination);
             monoNode.connect(splitter);
 
         } else {
-            //monoNode.disconnect(ctx.destination);
-            //monoNode.disconnect(splitter);
-            src.disconnect();
             monoNode.disconnect();
             src.connect(ctx.destination);
             src.connect(splitter);
         }
-
     }
 
-    lastWidth=canvas.width;
-    draw = function () {
+    lastWidth = canvas.width;
+
+
+    DrawStereoNoDiffColor = function () {
+        leftAnalyser.getByteFrequencyData(freql);
+        rightAnalyser.getByteFrequencyData(freqr);
+
+        const halfHeight = height / 2;
+        const cHeight = halfHeight * 0.07;
+        const wfHeight = halfHeight - cHeight;
+
+        const bwfBegin = wfHeight + cHeight + cHeight;
+
+
+        t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
+        t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
+
+        let lx = 0;
+
+        for (let i = 0; i < binCount; i++) {
+            const l = freql[i];
+            const r = freqr[i];
+            const d = Math.abs(l - r);
+
+            const w = widthFun(canvas.width, i, binCount, lastWidth);
+
+            if (fallStyle == 0) {
+                t.fillStyle = `rgb(${l},${r},0)`;
+                t.fillRect(lx, wfHeight, w, cHeight);
+
+                t.fillStyle = `rgb(${r},${l},0)`;
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+            } else {
+                t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
+                t.fillRect(lx, wfHeight, w, cHeight);
+
+                t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+            }
+            lx += w;
+        }
+        lastWidth = lx;
+        if (showVisWidth) {
+            t.fillStyle = `rgb(0,0,0)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
+
+            t.fillStyle = `rgba(255,255,255,0.8)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
+        }
+
+        if (showVis) {
+            visWin.requestAnimationFrame(drawFunction);
+        }
+
+    };
+
+
+    DrawStereo = function () {
         leftAnalyser.getByteFrequencyData(freql);
         rightAnalyser.getByteFrequencyData(freqr);
 
@@ -622,22 +838,192 @@ async function toggleVis() {
             }
             lx += w;
         }
-        lastWidth=lx;
-        if(showVisWidth) {
-            t.fillStyle=`rgb(0,0,0)`;
-            t.fillRect(0, wfHeight+(cHeight/2), width, cHeight);
+        lastWidth = lx;
+        if (showVisWidth) {
+            t.fillStyle = `rgb(0,0,0)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
 
-            t.fillStyle=`rgba(255,255,255,0.8)`;
-            t.fillRect(0, wfHeight+(cHeight/2), lx, cHeight);
+            t.fillStyle = `rgba(255,255,255,0.8)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
         }
 
         if (showVis) {
-            visWin.requestAnimationFrame(draw);
+            visWin.requestAnimationFrame(drawFunction);
         }
 
     };
 
-    draw();
+    let db = [];
+    for (let i = 0; i < binCount * 2; i++) { db[i] = 0; }
+    DrawUnbalance = function () {
+        leftAnalyser.getByteFrequencyData(freql);
+        rightAnalyser.getByteFrequencyData(freqr);
+
+        const halfHeight = height / 2;
+        const cHeight = halfHeight * 0.07;
+        const wfHeight = halfHeight - cHeight;
+
+        const bwfBegin = wfHeight + cHeight + cHeight;
+
+
+        t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
+        t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
+
+        let lx = 0;
+
+        for (let i = 0; i < binCount; i++) {
+            const l = freql[i];
+            const r = freqr[i];
+            const dd = Math.abs(l - r);
+
+            if (dd < 15) {
+                if (db[i] > 128) { db[i] -= 16 }
+                if (db[i] > 64) { db[i] -= 8 }
+                if (db[i] > 16) { db[i] -= 6 }
+                if (db[i] > 0) { db[i] -= 4 }
+                //db[i] *= 0.90;
+            }
+            db[i] += dd / 3;
+
+            if (db[i] < 0) { db[i] = 0; } else if (db[i] > 255) { db[i] = 255; }
+
+
+            let d = db[i];
+
+            const w = widthFun(canvas.width, i, binCount, lastWidth);
+
+            if (fallStyle == 0) {
+                t.fillStyle = `rgb(${l},${r},${d - r})`;
+                t.fillRect(lx, wfHeight, w, cHeight);
+
+                t.fillStyle = `rgb(${r},${l},${d - l})`;
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+            } else {
+                t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
+                t.fillRect(lx, wfHeight, w, cHeight);
+
+                t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+            }
+            lx += w;
+        }
+        lastWidth = lx;
+        if (showVisWidth) {
+            t.fillStyle = `rgb(0,0,0)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
+
+            t.fillStyle = `rgba(255,255,255,0.8)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
+        }
+
+        if (showVis) {
+            visWin.requestAnimationFrame(drawFunction);
+        }
+
+    };
+
+
+
+    intensityScale = 0.6;
+    let chanImb = [];
+    for (let i = 0; i < binCount; i++) { chanImb[i] = { l: 0, r: 0 }; }
+    let avgEnergy = [];
+    let frameNum = 0;
+    DrawStereoDiff = function () {
+        leftAnalyser.getByteFrequencyData(freql);
+        rightAnalyser.getByteFrequencyData(freqr);
+
+        const halfHeight = height / 2;
+        const cHeight = halfHeight * 0.07;
+        const wfHeight = halfHeight - cHeight;
+
+        const bwfBegin = wfHeight + cHeight + cHeight;
+
+        if (playing) {
+            t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
+            t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
+        }
+
+        let lx = 0;
+
+        let nrg = 0;
+        for (let i = 0; i < binCount; i++) {
+            let l = freql[i];
+            let r = freqr[i];
+
+            nrg += l + r;
+
+            const limb = r - l;
+            const rimb = l - r;
+
+
+            if (limb > 32 && chanImb[i].l < 512) {
+                chanImb[i].l = chanImb[i].l * 0.85 + limb * 0.75;
+            } else {
+                chanImb[i].l = chanImb[i].l * 0.9;
+            }
+            if (rimb > 32 && chanImb[i].r < 512) {
+                chanImb[i].r = chanImb[i].r * 0.85 + rimb * 0.75;
+            } else {
+                chanImb[i].r = chanImb[i].r * 0.9;
+            }
+
+            let il = chanImb[i].l;
+            let ir = chanImb[i].r;
+
+            if (intensityScale !== 0) {
+                l *= Math.pow(1 / 255 * l, intensityScale);
+                r *= Math.pow(1 / 255 * r, intensityScale);
+                il *= Math.pow(1 / 255 * il, intensityScale);
+                ir *= Math.pow(1 / 255 * ir, intensityScale);
+            }
+
+            const w = widthFun(canvas.width, i, binCount, lastWidth);
+
+            t.fillStyle = `rgb(${l},${r},${il - l})`;
+            t.fillRect(lx, wfHeight, w, cHeight);
+
+            t.fillStyle = `rgb(${r},${l},${ir - r})`;
+            t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+
+            lx += w;
+        }
+
+        if (enableAutoscale) {
+            avgEnergy.push(nrg / (binCount * 2));
+            if (avgEnergy.length > autoScaleWindow) {
+                avgEnergy.shift();
+            }
+            nrg = 0;
+            for (let i = 0; i < avgEnergy.length; i++) {
+                nrg += avgEnergy[i];
+            }
+            nrg /= avgEnergy.length;
+
+            intensityScale = maxAutoScale / 255 * nrg;
+            if (frameNum % 10 === 0) {
+                document.getElementById('visIntScale').textContent = `${intensityScale}`.substring(0, 5) + ` / ${maxAutoScale}`;
+            }
+        }
+        frameNum++;
+
+        lastWidth = lx;
+        if (showVisWidth) {
+            t.fillStyle = `rgb(0,0,0)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
+
+            t.fillStyle = `rgba(255,255,255,0.8)`;
+            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
+        }
+
+        if (showVis) {
+            visWin.requestAnimationFrame(drawFunction);
+        }
+
+    }
+
+    drawFunction = DrawStereoDiff;
+    drawFunction();
     // popout
 
     //const host   = document.getElementById('canvasHost');
@@ -645,7 +1031,9 @@ async function toggleVis() {
     togglePop = () => {
 
         if (win) {
+            win.close();
             return;
+
         }
         win = window.open('', '', 'width=900,height=700');
         if (!win) { alert('Popup blocked'); return; }
@@ -661,7 +1049,8 @@ async function toggleVis() {
     `);
         win.document.close();
 
-        canvas.removeEventListener('click', togglePop);
+
+        //canvas.removeEventListener('click', togglePop);
         window.removeEventListener('resize', onMainResize);
 
 
@@ -673,11 +1062,10 @@ async function toggleVis() {
 
         // If the popout window closes, put the canvas back
         win.addEventListener('beforeunload', () => {
-            //host.replaceChild(canvas, placeholder);
-            document.body.insertBefore(canvas, document.body.firstChild);
-            canvas.addEventListener('click', togglePop);
+
+            visWrap.insertBefore(canvas, visWrap.firstChild);
             window.addEventListener('resize', onMainResize);
-            setTimeout( onMainResize, 60);
+            setTimeout(onMainResize, 60);
 
             visWin = window;
             win = null;

@@ -1,35 +1,90 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <script src="player.js"></script>
-        <style>
-.a {
-    background-color: #FFFFFF;
-}
-.b {
-    background-color: #F2F2F2;
-}
 
-.c {
-    cursor: crosshair;
-}
+<head>
+    <script src="player.js"></script>
+    <style>
+        .a {
+            background-color: #2b2d30;
+        }
 
-.p {
-    background-color: #ADFCD2;
-}
+        .b {
+            background-color: #494d52;
+        }
 
-body {
-    background-color: #FAFBFF;
-}
-        </style>
-    </head>
-    <body>
-        <input type="button" onclick="toggle();" value="." id="toggle">&nbsp;&nbsp;&nbsp;<input type="button" onclick="setList(true, 0);" value="🔀">&nbsp;&nbsp;🔍&nbsp;<input id="search" type="text" onkeyup="setList(false, 0);">&nbsp;&nbsp;&nbsp;
-        &nbsp;&nbsp;&nbsp;<span id="numres"></span><input type="checkbox" id="silly" title="skip past id3 files for flacs..">
-        &nbsp;&nbsp;🔊&nbsp;<input type="range" min=0 max=100 value=100 id="vol" onchange="audio.volume=(document.getElementById('vol').value/100)" style="width: 100px;">
+        select,
+        input {
+            background-color: #2b2d30;
+            color: #b0a98d;
+        }
+
+        span,
+        div,
+        table,
+        td,
+        tr {
+            color: #b3a883;
+            border-color: #797464;
+        }
+
+        .c {
+            cursor: crosshair;
+        }
+
+        .p {
+            background-color: #4a384e;
+        }
+
+        #visWrap {
+            display: none;
+        }
+
+        body {
+            background-color: #353638;
+            margin: 0px;
+        }
+
+        #contentDiv {
+            margin: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="visWrap"></div>
+    <div id="contentDiv">
+        <input type="button" onclick="toggle();" value="." id="toggle">&nbsp;&nbsp;&nbsp;<input type="button"
+            onclick="setList(true, 0);" value="🔀">&nbsp;&nbsp;🔍&nbsp;<input id="search" type="text"
+            onkeyup="setList(false, 0);">&nbsp;&nbsp;&nbsp;
+        &nbsp;&nbsp;&nbsp;<span id="numres"></span><input type="checkbox" id="silly"
+            title="skip past id3 files for flacs..">
+        &nbsp;&nbsp;🔊&nbsp;<input type="range" min=0 max=100 value=100 id="vol"
+            onchange="audio.volume=(document.getElementById('vol').value/100)" style="width: 100px;">
         &nbsp;&nbsp;🕑&nbsp;<input type="range" min=0 max=100 value=100 id="tim" style="width: 400px;" step="0.01">
-        <div id="status" style="border: 1px solid black; margin-bottom: 0.5em; margin-top: 0.5em;"></div>
+        <input type="button" onclick="toggleVis();" value="🪷" id="toggleVis">
+
+        <div id="visSettings" style="display: none; margin-bottom: 0.5em; margin-top: 0.5em;">
+            <input type="button" onclick="togglePop();" value="🍿 pop" id="popVis">
+            <select name="visWidthFunctions" onchange="setVisWidth(this.value)">
+                <option value="WidthAsLinear">Linear</option>
+                <option value="WidthAsBestEffort">Best effort</option>
+                <option value="WidthAsLogTen">Log 10</option>
+                <option value="WidthAsOne">1 : 1</option>
+            </select>
+            <input type="button" onclick="toggleMono();" value="Toggle mono">
+            <input type="button" onclick="toggleCapture();" id="toggleCaptureBtn" value="🎤">
+            <input type="range" oninput="setFallSpeed(this.value)" min="0" max="100" value="25">
+            <div id="visFallSpeedDisp" style="display: inline;">1 p/f</div>
+            <input type="range" id="intensityRangeInput" oninput="setIntensityScale()" min="0" max="400"
+                value="25"><input type="checkbox" onchange="setIntensityAutoscale()" id="setIntensityAutoscaleCheckbox"
+                title="Autoscale intensity">
+            <div id="visIntScale" style="display: inline;">X</div>
+        </div>
+
+        <div id="status" style="border: 1px solid; margin-bottom: 0.5em; margin-top: 0.5em;"></div>
         <div id="list"></div>
-        <div id="help" style="display:none;"><ul>
+        <div id="help" style="display:none;">
+            <ul>
                 <li>Click song name to play / add to queue</li>
                 <li>Click file name to remove from queue</li>
                 <li>? = 50 random tracks</li>
@@ -45,7 +100,9 @@ body {
                 <li>F toggle visualizer fullscreen</li>
                 <li>M toggle mono</li>
                 <li>Console vars of interest: fallspeed, smooth</li>
-        </ul></div>
-    </body>
-</html>
+            </ul>
+        </div>
+    </div>
+</body>
 
+</html>
