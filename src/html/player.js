@@ -1,8 +1,14 @@
+let binScaleCurveElement;
+let binWidthCurve;
+let intensityCurve;
 
 let visWrap;
 setTimeout(() => {
     visWrap = document.getElementById('visWrap');
-}, 1000);
+    if (document.getElementById('search').value.length) {
+        setList(false, 0);
+    }
+}, 100);
 
 //
 
@@ -414,6 +420,9 @@ let visIsInit = false;
 
 
 
+const WidthAsCurveLut = (width, idx, binCount) => { return binWidthCurve.applyCurve(idx, width); };
+
+
 const WidthAsLogTen = (width, idx, binCount) => width * (Math.log10(1 + 1 / (idx + 1) / Math.log10(binCount)));
 const WidthAsLinear = (width, idx, binCount) => width / binCount;
 const WidthAsOne = () => 1;
@@ -437,6 +446,7 @@ const WidthAsBestEffort = (width, idx, binCount, lastWidth) => {
     return ((width / binCount) * (1 - Math.log(idx + 1) / Math.log(binCount))) * besf;
 };
 const WidthFunctions = {
+    WidthAsCurveLut,
     WidthAsLogTen,
     WidthAsLinear,
     WidthAsOne,
@@ -484,48 +494,92 @@ let nrgDist;
 let nrgCounts = 0;
 let besf = 1;
 let lastdir = 0;
+let toggleScale = ()=>{
+    const c = document.getElementById('scaleWrap');
+    const bc = document.getElementById("btnShowScale");
+    if(c.style.display != 'none') {
+        c.style.display = 'none';
+        bc.value = "🗖 scale";
+    } else {
+        c.style.display = 'inline flow-root';
+        bc.value = "🗕 scale";
+
+    }
+};
+
+const toggleVisSettings = ()=>{
+
+    const s = document.getElementById('visSettings').style;
+    const sb = document.getElementById('toggleVisSettings');
+
+    if(s.display==='block') {
+        s.display = 'none';
+        sb.value="🗕";
+    } else {
+        s.display = 'block';
+        sb.value="🗖";
+        
+    }
+}
+
 
 
 let setVisWidth = (key) => {
     widthFun = WidthFunctions[key];
+    if(widthFun === WidthAsCurveLut) {
+        const chkUseScaleCurve = document.getElementById('scaleEnabled');
+        chkUseScaleCurve.checked = true;
+    }
 };
 
 function toggleUseCurve() {
     useCurve = document.getElementById("curveEnabled").checked;
 }
 
+function toggleUseScale() {
+    const checked = document.getElementById('scaleEnabled').checked;
+    if(checked) {
+        document.getElementById('visWidthFunctions').value="WidthAsCurveLut";
+    } else {
+        document.getElementById('visWidthFunctions').value="WidthAsLinear";
+    }
+    setVisWidth(document.getElementById('visWidthFunctions').value);
+}
+
 function toggleIntensity() {
-    const c = document.getElementById("curve");
+    const c = document.getElementById("intensityWrap");
     const bc = document.getElementById("btnShowIntensity");
 
-
-    if (c.style.display == "block") {
+    if (c.style.display != "none") {
         c.style.display = 'none';
-        bc.value = "🗖";
+        bc.value = "🗖 intensity";
         showingCurve = false;
     } else {
         showingCurve = true;
-        c.style.display = 'block';
-        bc.value = "🗕";
+        c.style.display = 'inline flow-root';
+        bc.value = "🗕 intensity";
     }
 }
 
 async function toggleVis() {
     if (visIsInit) {
-        showVis = !showVis;
 
-        document.getElementById('visWrap').style.display = (showVis) ? 'block' : 'none';
+        showVis = !showVis;
         if (showVis) {
             showVis = false;
             setTimeout(() => {
-                document.getElementById('visSettings').style.display = 'block';
+                document.getElementById('toggleVisSettings').style.display = 'inline';
+                document.getElementById('visWrap').style.display = 'block';
+                document.getElementById('toggleVis').style.display = 'none';
                 canvas.style.display = 'block';
                 showVis = true;
                 drawFunction();
             }, 200);
         } else {
+            document.getElementById('toggleVisSettings').style.display = 'none';
+            document.getElementById('visWrap').style.display = 'none';
+            document.getElementById('toggleVis').style.display = 'inline';
             document.getElementById('visSettings').style.display = 'none';
-
             canvas.style.display = 'none';
         }
 
@@ -535,12 +589,19 @@ async function toggleVis() {
     visIsInit = true;
     showVis = true;
 
-    document.getElementById('visSettings').style.display = 'block';
-    document.getElementById('visWrap').style.display = (showVis) ? 'block' : 'none';
+    document.getElementById('toggleVisSettings').style.display = 'inline';
+    document.getElementById('visWrap').style.display = 'block';
+    document.getElementById('toggleVis').style.display = 'none';
 
 
-    CurveEditorInit();
+    intensityCurve = CurveEditorInit({
+        canvas: document.getElementById('intensityCurve'),
+        monotone: true,
+    });
     useCurve = document.getElementById("curveEnabled").checked = useCurve;
+
+
+
 
     let externalSource = false;
 
@@ -692,27 +753,49 @@ async function toggleVis() {
     fallSpeed = 1;
     fallStyle = 0;
 
-    function onResize(win, doc) {
-        if (!isFullScreen) {
-            const dpr = Math.max(1, win.devicePixelRatio || 1);
-            if (doc) {
-                canvas.width = Math.round(document.getElementById('list').getBoundingClientRect().width * dpr);
-                canvas.height = 400;
+
+    binWidthCurve = CurveEditorInit({
+        canvas: document.getElementById('scaleCurve'),
+        max: 1024,
+        min: 0.1,
+        monotone: true,
+        onLutReady: (api) => {
+            setTimeout(() => {
+                const a = [];
+                const b = [];
+                let max = 1;
+                for (let i = 0; i < 1024; i++) {
+                    a[i] = canvas.width / binCount;
+                    b[i] = WidthAsCurveLut(canvas.width, i, binCount);
+                    max = Math.max(a[i], b[i], max);
+                }
+                api.draw(a, b, max);
+            }, 200);
+        },
+    });
+
+
+        function onResize(win, doc) {
+            if (!isFullScreen) {
+                const dpr = Math.max(1, win.devicePixelRatio || 1);
+                if (doc) {
+                    canvas.width = Math.round(document.getElementById('list').getBoundingClientRect().width * dpr);
+                    canvas.height = 400;
+                }
+                else {
+                    canvas.width = win.innerWidth;
+                    canvas.height = win.innerHeight;
+                }
+                width = canvas.width;
+                height = canvas.height;
+                step = width / binCount;
+                lastWidth = canvas.width;
+                lastdir = 0;
+                besf = 1;
             }
-            else {
-                canvas.width = win.innerWidth;
-                canvas.height = win.innerHeight;
-            }
-            width = canvas.width;
-            height = canvas.height;
-            step = width / binCount;
-            lastWidth = canvas.width;
-            lastdir = 0;
-            besf = 1;
+            t.fillStyle = `rgb(0,0,0)`;
+            t.fillRect(0, 0, width, canvas.height);
         }
-        t.fillStyle = `rgb(0,0,0)`;
-        t.fillRect(0, 0, width, canvas.height);
-    }
 
     onMainResize = () => {
         onResize(window, document);
@@ -731,12 +814,15 @@ async function toggleVis() {
         isMono = !isMono;
         src.disconnect();
 
+        const mb = document.getElementById('monoButton');
         if (isMono) {
+            mb.value = "Mono";
             src.connect(monoNode);
             monoNode.connect(ctx.destination);
             monoNode.connect(splitter);
 
         } else {
+            mb.value = "Stereo";
             monoNode.disconnect();
             src.connect(ctx.destination);
             src.connect(splitter);
@@ -746,181 +832,8 @@ async function toggleVis() {
     lastWidth = canvas.width;
 
 
-    DrawStereoNoDiffColor = function () {
-        leftAnalyser.getByteFrequencyData(freql);
-        rightAnalyser.getByteFrequencyData(freqr);
-
-        const halfHeight = height / 2;
-        const cHeight = halfHeight * 0.07;
-        const wfHeight = halfHeight - cHeight;
-
-        const bwfBegin = wfHeight + cHeight + cHeight;
 
 
-        t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
-        t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
-
-        let lx = 0;
-
-        for (let i = 0; i < binCount; i++) {
-            const l = freql[i];
-            const r = freqr[i];
-            const d = Math.abs(l - r);
-
-            const w = widthFun(canvas.width, i, binCount, lastWidth);
-
-            if (fallStyle == 0) {
-                t.fillStyle = `rgb(${l},${r},0)`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${l},0)`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            } else {
-                t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            }
-            lx += w;
-        }
-        lastWidth = lx;
-        if (showVisWidth) {
-            t.fillStyle = `rgb(0,0,0)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
-
-            t.fillStyle = `rgba(255,255,255,0.8)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
-        }
-
-        if (showVis) {
-            visWin.requestAnimationFrame(drawFunction);
-        }
-
-    };
-
-
-    DrawStereo = function () {
-        leftAnalyser.getByteFrequencyData(freql);
-        rightAnalyser.getByteFrequencyData(freqr);
-
-        const halfHeight = height / 2;
-        const cHeight = halfHeight * 0.07;
-        const wfHeight = halfHeight - cHeight;
-
-        const bwfBegin = wfHeight + cHeight + cHeight;
-
-
-        t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
-        t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
-
-        let lx = 0;
-
-        for (let i = 0; i < binCount; i++) {
-            const l = freql[i];
-            const r = freqr[i];
-            const d = Math.abs(l - r);
-
-            const w = widthFun(canvas.width, i, binCount, lastWidth);
-
-            if (fallStyle == 0) {
-                t.fillStyle = `rgb(${l},${r},${d})`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${l},${d})`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            } else {
-                t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            }
-            lx += w;
-        }
-        lastWidth = lx;
-        if (showVisWidth) {
-            t.fillStyle = `rgb(0,0,0)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
-
-            t.fillStyle = `rgba(255,255,255,0.8)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
-        }
-
-        if (showVis) {
-            visWin.requestAnimationFrame(drawFunction);
-        }
-
-    };
-
-    let db = [];
-    for (let i = 0; i < binCount * 2; i++) { db[i] = 0; }
-    DrawUnbalance = function () {
-        leftAnalyser.getByteFrequencyData(freql);
-        rightAnalyser.getByteFrequencyData(freqr);
-
-        const halfHeight = height / 2;
-        const cHeight = halfHeight * 0.07;
-        const wfHeight = halfHeight - cHeight;
-
-        const bwfBegin = wfHeight + cHeight + cHeight;
-
-
-        t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
-        t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
-
-        let lx = 0;
-
-        for (let i = 0; i < binCount; i++) {
-            const l = freql[i];
-            const r = freqr[i];
-            const dd = Math.abs(l - r);
-
-            if (dd < 15) {
-                if (db[i] > 128) { db[i] -= 16 }
-                if (db[i] > 64) { db[i] -= 8 }
-                if (db[i] > 16) { db[i] -= 6 }
-                if (db[i] > 0) { db[i] -= 4 }
-                //db[i] *= 0.90;
-            }
-            db[i] += dd / 3;
-
-            if (db[i] < 0) { db[i] = 0; } else if (db[i] > 255) { db[i] = 255; }
-
-
-            let d = db[i];
-
-            const w = widthFun(canvas.width, i, binCount, lastWidth);
-
-            if (fallStyle == 0) {
-                t.fillStyle = `rgb(${l},${r},${d - r})`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${l},${d - l})`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            } else {
-                t.fillStyle = `rgb(${l},${l - 255},${l - 255})`;
-                t.fillRect(lx, wfHeight, w, cHeight);
-
-                t.fillStyle = `rgb(${r},${r - 255},${r - 255})`;
-                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-            }
-            lx += w;
-        }
-        lastWidth = lx;
-        if (showVisWidth) {
-            t.fillStyle = `rgb(0,0,0)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
-
-            t.fillStyle = `rgba(255,255,255,0.8)`;
-            t.fillRect(0, wfHeight + (cHeight / 2), lx, cHeight);
-        }
-
-        if (showVis) {
-            visWin.requestAnimationFrame(drawFunction);
-        }
-
-    };
 
 
     let chanImb = [];
@@ -934,8 +847,7 @@ async function toggleVis() {
 
 
     DrawStereoDiff = function () {
-        leftAnalyser.getByteFrequencyData(freql);
-        rightAnalyser.getByteFrequencyData(freqr);
+        let lx = 0;
 
         const halfHeight = height / 2;
         const cHeight = halfHeight * 0.07;
@@ -944,15 +856,17 @@ async function toggleVis() {
         const bwfBegin = wfHeight + cHeight + cHeight;
 
         if (playing) {
+
+            leftAnalyser.getByteFrequencyData(freql);
+            rightAnalyser.getByteFrequencyData(freqr);
+
             t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
             t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
 
-            let lx = 0;
 
             for (let i = 0; i < binCount; i++) {
                 let l = freql[i];
                 let r = freqr[i];
-
 
                 const limb = r - l;
                 const rimb = l - r;
@@ -981,16 +895,16 @@ async function toggleVis() {
                 let il = chanImb[i].l;
                 let ir = chanImb[i].r;
                 if (useCurve) {
-                    l = window.applyCurve(l);
-                    r = window.applyCurve(r);
+                    l = intensityCurve.applyCurve(l);
+                    r = intensityCurve.applyCurve(r);
                     if (l > 0) {
                         nrgDistB[l]++;
                     }
                     if (l > 0) {
                         nrgDistB[r]++;
                     }
-                    il = window.applyCurve(il);
-                    ir = window.applyCurve(ir);
+                    il = intensityCurve.applyCurve(il);
+                    ir = intensityCurve.applyCurve(ir);
                 }
 
                 const w = widthFun(canvas.width, i, binCount, lastWidth);
@@ -1003,7 +917,6 @@ async function toggleVis() {
 
                 lx += w;
             }
-
 
             lastWidth = lx;
 
@@ -1020,11 +933,12 @@ async function toggleVis() {
 
         if (showVis) {
             if (showingCurve) {
-                let max = 0;
+                let max = (!playing) ? 255 : 0;
                 for (let i = 1; i < nrgDist.length; i++) {
                     max = Math.max(max, nrgDist[i], nrgDistB[i]);
                 }
-                window.drawCurve(nrgDist, nrgDistB, max);
+                //console.log('draw', max);
+                intensityCurve.draw(nrgDist, nrgDistB, max);
             }
             visWin.requestAnimationFrame(drawFunction);
         }

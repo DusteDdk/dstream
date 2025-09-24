@@ -63,22 +63,33 @@
             onchange="audio.volume=(document.getElementById('vol').value/100)" style="width: 100px;">
         &nbsp;&nbsp;🕑&nbsp;<input type="range" min=0 max=100 value=100 id="tim" style="width: 400px;" step="0.01">
         <input type="button" onclick="toggleVis();" value="🪷" id="toggleVis">
+        <input type="button" onclick="toggleVisSettings();" style="display:none;" value="🗖" id="toggleVisSettings">
 
         <div id="visSettings" style="display: none; margin-bottom: 0.5em; margin-top: 0.5em;">
+            <input type="button" onclick="toggleVis();" value="×">
             <input type="button" onclick="togglePop();" value="🍿 pop" id="popVis">
-            <select name="visWidthFunctions" onchange="setVisWidth(this.value)">
+            <select id="visWidthFunctions" onchange="setVisWidth(this.value)">
                 <option value="WidthAsLinear">Linear</option>
+                <option value="WidthAsCurveLut">Curve</option>
                 <option value="WidthAsBestEffort">Best effort</option>
                 <option value="WidthAsLogTen">Log 10</option>
                 <option value="WidthAsOne">1 : 1</option>
             </select>
-            <input type="button" onclick="toggleMono();" value="Toggle mono">
+            <input type="button" id="monoButton" onclick="toggleMono();" value="Stereo">
             <input type="button" onclick="toggleCapture();" id="toggleCaptureBtn" value="🎤">
             <input type="range" oninput="setFallSpeed(this.value)" min="0" max="100" value="25">
             <div id="visFallSpeedDisp" style="display: inline;">1 p/f</div>
-            <input type="button" id="btnShowIntensity" onclick="toggleIntensity();" value="🗖">
-            <input type="checkbox" id="curveEnabled" onclick="toggleUseCurve()"" title="use the intensity curve">
-            <canvas id="curve" width="512" height="512" style="display: none;"></canvas>
+            <input type="button" id="btnShowIntensity" onclick="toggleIntensity();" value="🗖 intensity">
+            <input type="button" id="btnShowScale" onclick="toggleScale();" value="🗖 scale">
+            <br>
+            <div id="intensityWrap" style="display: none;">
+                <canvas id="intensityCurve" width="512" height="512"></canvas><br>
+                <label>Use intensity curve:<input type="checkbox" id="curveEnabled" onclick="toggleUseCurve()"></label>
+            </div>
+            <div id="scaleWrap" style="display: none;">
+            <canvas id="scaleCurve" width="512" height="512"></canvas><br>
+            <label>Use scale curve:<input type="checkbox" id="scaleEnabled" onclick="toggleUseScale()"></label>
+            </div>
         </div>
 
         <div id="status" style="border: 1px solid; margin-bottom: 0.5em; margin-top: 0.5em;"></div>
