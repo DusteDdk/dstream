@@ -3,6 +3,7 @@
 
 <head>
     <script src="player.js"></script>
+    <script src="curve.js"></script>
     <style>
         .a {
             background-color: #2b2d30;
@@ -75,10 +76,9 @@
             <input type="button" onclick="toggleCapture();" id="toggleCaptureBtn" value="🎤">
             <input type="range" oninput="setFallSpeed(this.value)" min="0" max="100" value="25">
             <div id="visFallSpeedDisp" style="display: inline;">1 p/f</div>
-            <input type="range" id="intensityRangeInput" oninput="setIntensityScale()" min="0" max="400"
-                value="25"><input type="checkbox" onchange="setIntensityAutoscale()" id="setIntensityAutoscaleCheckbox"
-                title="Autoscale intensity">
-            <div id="visIntScale" style="display: inline;">X</div>
+            <input type="button" id="btnShowIntensity" onclick="toggleIntensity();" value="🗖">
+            <input type="checkbox" id="curveEnabled" onclick="toggleUseCurve()"" title="use the intensity curve">
+            <canvas id="curve" width="512" height="512" style="display: none;"></canvas>
         </div>
 
         <div id="status" style="border: 1px solid; margin-bottom: 0.5em; margin-top: 0.5em;"></div>

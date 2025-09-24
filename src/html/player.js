@@ -32,54 +32,54 @@ function getClass(idx) {
 
 let pl;
 let keyNum = 0;
-let searchStr='';
+let searchStr = '';
 
-let numTracks=0;
+let numTracks = 0;
 
 async function setList(random, offset) {
 
-    if(isNaN(offset)) {
+    if (isNaN(offset)) {
         offset = 0;
-        random=true;
+        random = true;
     }
 
     keyNum++;
     const myKey = keyNum;
 
     const canOptimize = (!random && offset === 0);
-    if(canOptimize) {
-        await new Promise( (resolve)=>{
+    if (canOptimize) {
+        await new Promise((resolve) => {
             setTimeout(resolve, 250);
         });
 
-        if(keyNum != myKey) {
+        if (keyNum != myKey) {
             return;
         }
 
-        if(isNaN (offset)) {
-            random=true;
-            offset=0;
-            curPage=0;
+        if (isNaN(offset)) {
+            random = true;
+            offset = 0;
+            curPage = 0;
         }
 
     }
 
     const mySearchStr = document.getElementById('search').value;
 
-    if(canOptimize && mySearchStr == searchStr) {
+    if (canOptimize && mySearchStr == searchStr) {
         return;
     }
 
     searchStr = mySearchStr;
     const list = await loadList(mySearchStr, random, offset);
 
-    if(canOptimize && searchStr != mySearchStr) {
+    if (canOptimize && searchStr != mySearchStr) {
         return;
     }
 
     pl = JSON.parse(list);
 
-    if( offset === 0) {
+    if (offset === 0) {
         numTracks = pl.length;
         document.getElementById('numres').innerHTML = pl.length;
     } else {
@@ -124,11 +124,11 @@ async function setList(random, offset) {
 
     let html = '<table border=1 style="border: 1px solid; border-collapse:collapse; width:100%">';
     pl.forEach((track, idx) => {
-        if(!track) { return console.error(`Track is null at idx ${idx} curPage ${curPage} in list of ${pl.length}`); }
+        if (!track) { return console.error(`Track is null at idx ${idx} curPage ${curPage} in list of ${pl.length}`); }
         const duration = `${('' + Math.floor(track.duration / 60)).padStart(2, '0')}:${('' + Math.round(track.duration % 60)).padStart(2, '0')}`;
         const fn = track.file.replaceAll("'", "\\'").replaceAll('#', '%23');
-        const trackNum = (track.id)?track.id:idx+curPage;
-        html += '<tr class="' + getClass(idx) + '" id=' + idx + '><td>' + trackNum + ' ' +track.codec.split(' ')[0] +'</td><td>' + track.albumName + '</td><td onclick="playFrom(\'' + fn + '\',' + idx + ');" class="c">' + track.artistName + '</td><td onclick="add(\'' + fn + '\');" class="c">' + ((track.title !== 'Untitled') ? track.title : track.file) + '</td><td onclick="playNow(\'' + fn + '\');" class="c">' + duration + '</td><td>' + track.year + '</td></tr>';
+        const trackNum = (track.id) ? track.id : idx + curPage;
+        html += '<tr class="' + getClass(idx) + '" id=' + idx + '><td>' + trackNum + ' ' + track.codec.split(' ')[0] + '</td><td>' + track.albumName + '</td><td onclick="playFrom(\'' + fn + '\',' + idx + ');" class="c">' + track.artistName + '</td><td onclick="add(\'' + fn + '\');" class="c">' + ((track.title !== 'Untitled') ? track.title : track.file) + '</td><td onclick="playNow(\'' + fn + '\');" class="c">' + duration + '</td><td>' + track.year + '</td></tr>';
     });
 
     html += '</table>';
@@ -463,12 +463,6 @@ let win = null;
 let lastWidth = 1024;
 let DrawUnbalance;
 let DrawStereoDiff;
-let intensityScale = 0;
-let setIntensityAutoscale;
-let setIntensityScale;
-let maxAutoScale = 1.5;
-let enableAutoscale = true;
-let autoScaleWindow = 60;
 let DrawStereoNoDiffColor;
 let DrawStereo;
 let drawFunction;
@@ -484,7 +478,10 @@ let smooth;
 let monoNode = null;
 let onMainResize;
 let showVis = false;
-
+let useCurve = false;
+let showingCurve = false;
+let nrgDist;
+let nrgCounts = 0;
 let besf = 1;
 let lastdir = 0;
 
@@ -493,6 +490,25 @@ let setVisWidth = (key) => {
     widthFun = WidthFunctions[key];
 };
 
+function toggleUseCurve() {
+    useCurve = document.getElementById("curveEnabled").checked;
+}
+
+function toggleIntensity() {
+    const c = document.getElementById("curve");
+    const bc = document.getElementById("btnShowIntensity");
+
+
+    if (c.style.display == "block") {
+        c.style.display = 'none';
+        bc.value = "🗖";
+        showingCurve = false;
+    } else {
+        showingCurve = true;
+        c.style.display = 'block';
+        bc.value = "🗕";
+    }
+}
 
 async function toggleVis() {
     if (visIsInit) {
@@ -523,7 +539,8 @@ async function toggleVis() {
     document.getElementById('visWrap').style.display = (showVis) ? 'block' : 'none';
 
 
-
+    CurveEditorInit();
+    useCurve = document.getElementById("curveEnabled").checked = useCurve;
 
     let externalSource = false;
 
@@ -704,23 +721,6 @@ async function toggleVis() {
     window.addEventListener('resize', onMainResize);
     onMainResize();
 
-
-
-
-    document.getElementById('setIntensityAutoscaleCheckbox').checked = enableAutoscale;
-    setIntensityAutoscale = () => {
-        enableAutoscale = document.getElementById('setIntensityAutoscaleCheckbox').checked;
-        if (!enableAutoscale) {
-            document.getElementById('visIntScale').textContent = 'manual';
-        }
-        setIntensityScale();
-    }
-    setIntensityScale = () => {
-        let scale = document.getElementById('intensityRangeInput').value;
-        intensityScale = 0.6 / 25 * scale;
-        maxAutoScale = 1.5 / 25 * scale;
-        document.getElementById('visIntScale').textContent = intensityScale;
-    };
 
     setFallSpeed = (speedPct) => {
         fallSpeed = 1 / 25 * speedPct;
@@ -923,12 +923,16 @@ async function toggleVis() {
     };
 
 
-
-    intensityScale = 0.6;
     let chanImb = [];
     for (let i = 0; i < binCount; i++) { chanImb[i] = { l: 0, r: 0 }; }
-    let avgEnergy = [];
-    let frameNum = 0;
+
+    nrgDist = new Array(256);
+    for (let i = 0; i < 256; i++) { nrgDist[i] = 0; }
+
+    let nrgDistB = new Array(256);
+    for (let i = 0; i < 256; i++) { nrgDistB[i] = 0; }
+
+
     DrawStereoDiff = function () {
         leftAnalyser.getByteFrequencyData(freql);
         rightAnalyser.getByteFrequencyData(freqr);
@@ -942,72 +946,70 @@ async function toggleVis() {
         if (playing) {
             t.drawImage(canvas, 0, fallSpeed, width, wfHeight, 0, 0, width, wfHeight);
             t.drawImage(canvas, 0, bwfBegin - fallSpeed, width, wfHeight, 0, bwfBegin, width, wfHeight);
+
+            let lx = 0;
+
+            for (let i = 0; i < binCount; i++) {
+                let l = freql[i];
+                let r = freqr[i];
+
+
+                const limb = r - l;
+                const rimb = l - r;
+
+                if (limb > 32 && chanImb[i].l < 512) {
+                    chanImb[i].l = chanImb[i].l * 0.85 + limb * 0.75;
+                } else {
+                    chanImb[i].l = chanImb[i].l * 0.9;
+                }
+                if (rimb > 32 && chanImb[i].r < 512) {
+                    chanImb[i].r = chanImb[i].r * 0.85 + rimb * 0.75;
+                } else {
+                    chanImb[i].r = chanImb[i].r * 0.9;
+                }
+
+
+                if (showingCurve) {
+                    if (l > 0) {
+                        nrgDist[l]++;
+                    }
+                    if (r > 0) {
+                        nrgDist[r]++;
+                    }
+                }
+
+                let il = chanImb[i].l;
+                let ir = chanImb[i].r;
+                if (useCurve) {
+                    l = window.applyCurve(l);
+                    r = window.applyCurve(r);
+                    if (l > 0) {
+                        nrgDistB[l]++;
+                    }
+                    if (l > 0) {
+                        nrgDistB[r]++;
+                    }
+                    il = window.applyCurve(il);
+                    ir = window.applyCurve(ir);
+                }
+
+                const w = widthFun(canvas.width, i, binCount, lastWidth);
+
+                t.fillStyle = `rgb(${l},${r},${il - l})`;
+                t.fillRect(lx, wfHeight, w, cHeight);
+
+                t.fillStyle = `rgb(${r},${l},${ir - r})`;
+                t.fillRect(lx, wfHeight + cHeight, w, cHeight);
+
+                lx += w;
+            }
+
+
+            lastWidth = lx;
+
         }
 
-        let lx = 0;
 
-        let nrg = 0;
-        for (let i = 0; i < binCount; i++) {
-            let l = freql[i];
-            let r = freqr[i];
-
-            nrg += l + r;
-
-            const limb = r - l;
-            const rimb = l - r;
-
-
-            if (limb > 32 && chanImb[i].l < 512) {
-                chanImb[i].l = chanImb[i].l * 0.85 + limb * 0.75;
-            } else {
-                chanImb[i].l = chanImb[i].l * 0.9;
-            }
-            if (rimb > 32 && chanImb[i].r < 512) {
-                chanImb[i].r = chanImb[i].r * 0.85 + rimb * 0.75;
-            } else {
-                chanImb[i].r = chanImb[i].r * 0.9;
-            }
-
-            let il = chanImb[i].l;
-            let ir = chanImb[i].r;
-
-            if (intensityScale !== 0) {
-                l *= Math.pow(1 / 255 * l, intensityScale);
-                r *= Math.pow(1 / 255 * r, intensityScale);
-                il *= Math.pow(1 / 255 * il, intensityScale);
-                ir *= Math.pow(1 / 255 * ir, intensityScale);
-            }
-
-            const w = widthFun(canvas.width, i, binCount, lastWidth);
-
-            t.fillStyle = `rgb(${l},${r},${il - l})`;
-            t.fillRect(lx, wfHeight, w, cHeight);
-
-            t.fillStyle = `rgb(${r},${l},${ir - r})`;
-            t.fillRect(lx, wfHeight + cHeight, w, cHeight);
-
-            lx += w;
-        }
-
-        if (enableAutoscale) {
-            avgEnergy.push(nrg / (binCount * 2));
-            if (avgEnergy.length > autoScaleWindow) {
-                avgEnergy.shift();
-            }
-            nrg = 0;
-            for (let i = 0; i < avgEnergy.length; i++) {
-                nrg += avgEnergy[i];
-            }
-            nrg /= avgEnergy.length;
-
-            intensityScale = maxAutoScale / 255 * nrg;
-            if (frameNum % 10 === 0) {
-                document.getElementById('visIntScale').textContent = `${intensityScale}`.substring(0, 5) + ` / ${maxAutoScale}`;
-            }
-        }
-        frameNum++;
-
-        lastWidth = lx;
         if (showVisWidth) {
             t.fillStyle = `rgb(0,0,0)`;
             t.fillRect(0, wfHeight + (cHeight / 2), width, cHeight);
@@ -1017,6 +1019,13 @@ async function toggleVis() {
         }
 
         if (showVis) {
+            if (showingCurve) {
+                let max = 0;
+                for (let i = 1; i < nrgDist.length; i++) {
+                    max = Math.max(max, nrgDist[i], nrgDistB[i]);
+                }
+                window.drawCurve(nrgDist, nrgDistB, max);
+            }
             visWin.requestAnimationFrame(drawFunction);
         }
 
