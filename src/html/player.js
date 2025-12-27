@@ -261,16 +261,16 @@ document.addEventListener("fullscreenchange", (event) => {
         }, 100);
     } else {
         setTimeout(() => {
-            //canvas.addEventListener('click', togglePop);
-            height = 400;
-            canvas.height = 400;
-            width = canvas.width;
-            step = width / binCount;
+//            height = 400;
+//            canvas.height = 400;
+//            width = canvas.width;
+//            step = width / binCount;
             onMainResize();
         }, 100);
     }
 
 });
+
 
 async function toggleFullscreen() {
     if (win) {
@@ -280,8 +280,9 @@ async function toggleFullscreen() {
     if (!document.fullscreenElement) {
         await canvas.requestFullscreen();
     } else {
-        document.exitFullscreen();
+        await document.exitFullscreen();
     }
+
 
 }
 
@@ -494,10 +495,10 @@ let nrgDist;
 let nrgCounts = 0;
 let besf = 1;
 let lastdir = 0;
-let toggleScale = ()=>{
+let toggleScale = () => {
     const c = document.getElementById('scaleWrap');
     const bc = document.getElementById("btnShowScale");
-    if(c.style.display != 'none') {
+    if (c.style.display != 'none') {
         c.style.display = 'none';
         bc.value = "🗖 scale";
     } else {
@@ -507,26 +508,24 @@ let toggleScale = ()=>{
     }
 };
 
-const toggleVisSettings = ()=>{
-
+const toggleVisSettings = () => {
     const s = document.getElementById('visSettings').style;
     const sb = document.getElementById('toggleVisSettings');
 
-    if(s.display==='block') {
+    if (s.display === 'block') {
         s.display = 'none';
-        sb.value="🗕";
+        sb.value = "🗖";
     } else {
         s.display = 'block';
-        sb.value="🗖";
-        
+        sb.value = "🗕";
+
     }
 }
 
 
-
 let setVisWidth = (key) => {
     widthFun = WidthFunctions[key];
-    if(widthFun === WidthAsCurveLut) {
+    if (widthFun === WidthAsCurveLut) {
         const chkUseScaleCurve = document.getElementById('scaleEnabled');
         chkUseScaleCurve.checked = true;
     }
@@ -538,10 +537,10 @@ function toggleUseCurve() {
 
 function toggleUseScale() {
     const checked = document.getElementById('scaleEnabled').checked;
-    if(checked) {
-        document.getElementById('visWidthFunctions').value="WidthAsCurveLut";
+    if (checked) {
+        document.getElementById('visWidthFunctions').value = "WidthAsCurveLut";
     } else {
-        document.getElementById('visWidthFunctions').value="WidthAsLinear";
+        document.getElementById('visWidthFunctions').value = "WidthAsLinear";
     }
     setVisWidth(document.getElementById('visWidthFunctions').value);
 }
@@ -775,27 +774,39 @@ async function toggleVis() {
     });
 
 
-        function onResize(win, doc) {
-            if (!isFullScreen) {
-                const dpr = Math.max(1, win.devicePixelRatio || 1);
-                if (doc) {
-                    canvas.width = Math.round(document.getElementById('list').getBoundingClientRect().width * dpr);
-                    canvas.height = 400;
-                }
-                else {
-                    canvas.width = win.innerWidth;
-                    canvas.height = win.innerHeight;
-                }
-                width = canvas.width;
-                height = canvas.height;
-                step = width / binCount;
-                lastWidth = canvas.width;
-                lastdir = 0;
-                besf = 1;
-            }
+    function onResize(win, doc) {
+        if (isFullScreen) {
+            return;
+        }
+
+        let newWidth = 0;
+        let newHeight = 0;
+        const oldWidth = canvas.width;
+
+        const dpr = Math.max(1, win.devicePixelRatio || 1);
+        if (doc) {
+            newWidth = Math.round(document.getElementById('list').getBoundingClientRect().width * dpr);
+            newHeight = 400;
+        }
+        else {
+            newWidth = win.innerWidth;
+            newHeight = win.innerHeight;
+        }
+
+
+        if (Math.abs(newWidth - oldWidth) > 31) {
+            fullScreenChange=false;
+            canvas.width = width = newWidth;
+            canvas.height = height = newHeight;
+            step = width / binCount;
+            lastWidth = canvas.width;
+            lastdir = 0;
+            besf = 1;
             t.fillStyle = `rgb(0,0,0)`;
             t.fillRect(0, 0, width, canvas.height);
         }
+
+    }
 
     onMainResize = () => {
         onResize(window, document);

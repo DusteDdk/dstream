@@ -59,7 +59,7 @@ app.use('/music/', express.static('/music'));
 app.use('/random.json', (req, res)=>{
     const data = [];
 
-    db.each('SELECT year, duration,codec, file, title, artist.name AS artistName, album.name AS albumName FROM track INNER JOIN artist ON artist.id=track.artist INNER JOIN album ON album.id=track.album ORDER BY RANDOM() LIMIT 25', [], (err,row)=>{
+    db.each('SELECT track.id as id, year, duration,codec, file, title, artist.name AS artistName, album.name AS albumName FROM track INNER JOIN artist ON artist.id=track.artist INNER JOIN album ON album.id=track.album ORDER BY RANDOM() LIMIT 25', [], (err,row)=>{
         if(err) {
             console.log(err);
         }
@@ -76,6 +76,20 @@ app.use('/tracks.json', (req, res)=>{
     const qargs = query.map( e=>'%'+e+'%');
 
     db.each('SELECT track.id as id, year, duration,codec, file, title, artist.name AS artistName, album.name AS albumName FROM track INNER JOIN artist ON artist.id=track.artist INNER JOIN album ON album.id=track.album WHERE'+likes+' LIMIT 300', qargs, (err,row)=>{
+        if(err) {
+            console.log(err);
+        }
+        data.push(row);
+    }, ()=>{
+            return res.send(data);
+    });
+});
+
+app.use('/meta.json', (req, res)=>{
+    const data = [];
+    const trackId = req.query.id;
+
+    db.each('SELECT track.id as id, year, duration,codec, file, title, artist.name AS artistName, album.name AS albumName FROM track INNER JOIN artist ON artist.id=track.artist INNER JOIN album ON album.id=track.album WHERE track.id=? LIMIT 1', [trackId], (err,row)=>{
         if(err) {
             console.log(err);
         }

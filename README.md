@@ -63,6 +63,10 @@ Source?
 ====
 https://github.com/DusteDdk/dstream
 
+Non-webclients?
+=====
+https://github.com/DusteDdk/dstream-clients
+
 License
 ====
 WTFPL
